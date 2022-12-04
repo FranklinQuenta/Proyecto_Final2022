@@ -75,8 +75,7 @@ public class DepositosControlador extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        //aqui falta la parte de añadir y recibir los datos del formulario
-        //ACTUALIZACION 2/12/2021 TODO EL DOPOST para editar datos está completo
+       
         HttpSession ses = request.getSession();
         Integer aux = (Integer) ses.getAttribute("us_id");
         int aid = aux.intValue();
