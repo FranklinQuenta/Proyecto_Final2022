@@ -1,0 +1,160 @@
+﻿# Host: localhost  (Version 5.5.5-10.4.24-MariaDB)
+# Date: 2022-12-03 20:56:10
+# Generator: MySQL-Front 6.1  (Build 1.26)
+
+
+#
+# Structure for table "clientes"
+#
+
+DROP TABLE IF EXISTS `clientes`;
+CREATE TABLE `clientes` (
+  `ID_CLIENTE` int(11) NOT NULL AUTO_INCREMENT,
+  `NOMBRES` varchar(50) DEFAULT NULL,
+  `APELLIDOS` varchar(70) DEFAULT NULL,
+  `CEDULA_IDENTIDAD` varchar(30) DEFAULT NULL,
+  `SEXO` varchar(10) DEFAULT NULL,
+  `DIRECCION` varchar(100) DEFAULT NULL,
+  `CELULAR` varchar(10) DEFAULT NULL,
+  `CORREO` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`ID_CLIENTE`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+
+#
+# Data for table "clientes"
+#
+
+INSERT INTO `clientes` VALUES (1,'ALEJANDRO','CARRASCO MARTINEZ','7123829LP','HOMBRE','AV. ALEJANDRO PAEZ CALLE ZABALETA NRO 1293','76426398','ACARRASCO@GMAIL.COM'),(2,'JOSE CARLOS','QUISPE','61729301SCZ','HOMBRE','AV. MARTINEZ CALLE ALEJO NRO 2931','64576135','JQUISPE@GMAIL.COM'),(3,'Franklin','Quenta','8374448','Masculino','Pacajes','73290560','franklinquenta10@gmail.com'),(4,'FRANKLIN','QUENTA QUENTA','8374448','MASCULINO','ZANA VENTILLA','73290560','franklin@gmail.com');
+
+#
+# Structure for table "movimientos"
+#
+
+DROP TABLE IF EXISTS `movimientos`;
+CREATE TABLE `movimientos` (
+  `ID_REGISTRO` int(11) NOT NULL AUTO_INCREMENT,
+  `MONTO` int(11) NOT NULL,
+  `FECHA` date DEFAULT NULL,
+  `TIPO` varchar(8) DEFAULT NULL,
+  `COD_CLI` int(11) NOT NULL,
+  PRIMARY KEY (`ID_REGISTRO`),
+  KEY `COD_CLI` (`COD_CLI`),
+  CONSTRAINT `movimientos_ibfk_1` FOREIGN KEY (`COD_CLI`) REFERENCES `clientes` (`ID_CLIENTE`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;
+
+#
+# Data for table "movimientos"
+#
+
+INSERT INTO `movimientos` VALUES (1,250,'2021-03-13','DEPOSITO',1),(2,100,'2021-03-13','RETIRO',2),(3,250,'2022-12-03','RETIRO',3),(4,200,'2022-12-03','DEPOSITO',4),(5,60,'2022-12-03','RETIRO',4);
+
+#
+# Structure for table "reg_cuentas"
+#
+
+DROP TABLE IF EXISTS `reg_cuentas`;
+CREATE TABLE `reg_cuentas` (
+  `ID_REGISTRO` int(11) NOT NULL AUTO_INCREMENT,
+  `SALDO` int(11) NOT NULL,
+  `FECHA` date DEFAULT NULL,
+  `COD_CLIENTE` int(11) DEFAULT NULL,
+  PRIMARY KEY (`ID_REGISTRO`),
+  KEY `COD_CLIENTE` (`COD_CLIENTE`),
+  CONSTRAINT `reg_cuentas_ibfk_1` FOREIGN KEY (`COD_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4;
+
+#
+# Data for table "reg_cuentas"
+#
+
+INSERT INTO `reg_cuentas` VALUES (1,200,'2021-03-13',1),(2,500,'2021-08-06',2),(3,450,'2022-12-03',1),(4,400,'2022-12-03',2),(5,6000,'2022-12-03',3),(6,5750,'2022-12-03',3),(7,9000,'2022-12-03',4),(8,9200,'2022-12-03',4),(9,9140,'2022-12-03',4);
+
+#
+# Structure for table "usuarios"
+#
+
+DROP TABLE IF EXISTS `usuarios`;
+CREATE TABLE `usuarios` (
+  `ID_USUARIO` int(11) NOT NULL AUTO_INCREMENT,
+  `USUARIO` varchar(70) DEFAULT NULL,
+  `CONTRASEÑA` varchar(100) DEFAULT NULL,
+  `NIVEL` varchar(13) DEFAULT NULL,
+  `COD_CLIENTE` int(11) DEFAULT NULL,
+  PRIMARY KEY (`ID_USUARIO`),
+  KEY `COD_CLIENTE` (`COD_CLIENTE`),
+  CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`COD_CLIENTE`) REFERENCES `clientes` (`ID_CLIENTE`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+
+#
+# Data for table "usuarios"
+#
+
+INSERT INTO `usuarios` VALUES (1,'ACARRASCO','5e0d3816c2bd0ce33f412ff94bda4959dad4257c','CLIENTE',1),(2,'JQUISPE','c20680a918bf371b299b65f06e831ef0e5e1472d','CLIENTE',2),(3,'FQuenta','394f9e07b5131f6fb50663535baf318dfbe97029','CLIENTE',3),(4,'FQUENTA','394f9e07b5131f6fb50663535baf318dfbe97029','CLIENTE',4);
+
+#
+# Trigger "Reg_Movs"
+#
+
+DROP TRIGGER IF EXISTS `Reg_Movs`;
+CREATE TRIGGER Reg_Movs
+AFTER INSERT ON movimientos FOR EACH ROW
+BEGIN
+	SET @id = NEW.COD_CLI;
+	SET @saldo = (SELECT SALDO FROM reg_cuentas WHERE COD_CLIENTE=@id ORDER BY ID_REGISTRO DESC LIMIT 1);
+	IF NEW.TIPO = 'DEPOSITO' THEN BEGIN 
+    		INSERT INTO reg_cuentas (SALDO,FECHA,COD_CLIENTE) VALUES ((@saldo+(SELECT MONTO FROM movimientos WHERE TIPO='DEPOSITO' and COD_CLI = @id ORDER BY ID_REGISTRO DESC LIMIT 1)),CURDATE(),(SELECT ID_CLIENTE FROM clientes WHERE ID_CLIENTE = @id));
+        END; END IF;
+    IF NEW.TIPO = 'RETIRO' THEN BEGIN
+    	INSERT INTO reg_cuentas (SALDO,FECHA,COD_CLIENTE) VALUES ((@saldo-(SELECT MONTO FROM movimientos WHERE TIPO='RETIRO' and COD_CLI = @id ORDER BY ID_REGISTRO DESC LIMIT 1)),CURDATE(),(SELECT ID_CLIENTE FROM clientes WHERE ID_CLIENTE = @id));
+        END; END IF;
+END;
+
+#
+# Trigger "Reg_User_Pass_Ins"
+#
+
+DROP TRIGGER IF EXISTS `Reg_User_Pass_Ins`;
+CREATE TRIGGER Reg_User_Pass_Ins
+AFTER INSERT ON clientes FOR EACH ROW
+BEGIN
+	SET @id = NEW.ID_CLIENTE;
+	SET @user = (select concat(substring(NOMBRES,1,1),SUBSTRING_INDEX(SUBSTRING_INDEX(APELLIDOS, ' ',1), ' ',-1))from clientes where ID_CLIENTE=@id);
+    SET @pass = (select sha1(convert(CEDULA_IDENTIDAD,SIGNED)) from clientes where ID_CLIENTE = @id);
+    INSERT INTO usuarios (USUARIO,CONTRASEÑA,NIVEL,COD_CLIENTE) VALUES (@user,@pass,'CLIENTE',@id);
+END;
+
+#
+# Trigger "Reg_User_Pass_Upd"
+#
+
+DROP TRIGGER IF EXISTS `Reg_User_Pass_Upd`;
+CREATE TRIGGER Reg_User_Pass_Upd
+AFTER UPDATE ON clientes FOR EACH ROW
+BEGIN
+	SET @id = NEW.ID_CLIENTE;
+	SET @user = (select concat(substring(NOMBRES,1,1),SUBSTRING_INDEX(SUBSTRING_INDEX(APELLIDOS, ' ',1), ' ',-1))from clientes where ID_CLIENTE=@id);
+    SET @pass = (select sha1(convert(CEDULA_IDENTIDAD,SIGNED)) from clientes where ID_CLIENTE = @id);
+    UPDATE usuarios SET USUARIO=@user, CONTRASEÑA=@pass WHERE COD_CLIENTE=@id;
+END;
+
+#
+# Trigger "Updt_cuentas"
+#
+
+DROP TRIGGER IF EXISTS `Updt_cuentas`;
+CREATE TRIGGER Updt_cuentas
+BEFORE INSERT ON reg_cuentas FOR EACH ROW
+BEGIN
+    SET NEW.FECHA := CONCAT(CURDATE());
+END;
+
+#
+# Trigger "Updt_movs"
+#
+
+DROP TRIGGER IF EXISTS `Updt_movs`;
+CREATE TRIGGER Updt_movs
+BEFORE INSERT ON movimientos FOR EACH ROW
+BEGIN
+    SET NEW.FECHA := CONCAT(CURDATE());
+END;
